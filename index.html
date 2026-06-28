@@ -2,12 +2,26 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Usagi Reminder</title>
+
+<!-- PWA: biar bisa di-"Add to Home Screen" dan terbuka seperti app -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Usagi">
+<meta name="theme-color" content="#FBF4E9">
+
+<link id="appIcon" rel="icon" href="">
+<link id="appleIcon" rel="apple-touch-icon" href="">
+<link id="manifestLink" rel="manifest" href="">
+
 <title>Usagi Reminder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
 
   :root{
+
     --cream: #FBF4E9;
     --cream-deep: #F3E6D2;
     --milk: #FFFDF9;
@@ -496,6 +510,19 @@
     Tombol WhatsApp akan membuka chat ke nomormu dengan pesan yang sudah terisi —<br>
     tinggal sekali ketuk kirim 🐾
   </p>
+
+  <div class="card" style="margin-top: 18px;">
+    <p class="card-title"><span class="badge">📲</span> Pasang sebagai shortcut di HP</p>
+    <p style="font-size:12.5px; line-height:1.5; color:var(--cocoa); opacity:0.8; margin: 0 0 10px;">
+      Buka link aplikasinya dulu di browser HP, baru ikuti langkah ini ya 👇
+    </p>
+    <p style="font-size:13px; line-height:1.6; color:var(--cocoa-deep); margin: 0 0 8px;">
+      <b>Android (Chrome):</b> Ketuk menu titik tiga (⋮) di pojok kanan atas → pilih <b>"Tambahkan ke layar utama"</b> / "Add to Home screen" → Tambahkan.
+    </p>
+    <p style="font-size:13px; line-height:1.6; color:var(--cocoa-deep); margin: 0;">
+      <b>iPhone (Safari):</b> Ketuk ikon <b>Bagikan</b> (kotak dengan tanda panah ke atas) di bagian bawah → gulir lalu pilih <b>"Tambah ke Layar Utama"</b> / "Add to Home Screen" → Tambah.
+    </p>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -522,7 +549,7 @@
       saveStatusText.textContent = 'Menyimpan...';
     } else if(state === 'saved'){
       saveStatusEl.classList.remove('saving');
-      saveStatusText.textContent = 'Tersimpan otomatis';
+      saveStatusText.textContent = 'Tersimpan di perangkat ini';
     } else if(state === 'error'){
       saveStatusEl.classList.remove('saving');
       saveStatusText.textContent = 'Gagal menyimpan, coba lagi';
@@ -532,11 +559,10 @@
     }
   }
 
-  async function saveReminders(){
+  function saveReminders(){
     setSaveStatus('saving');
     try{
-      const result = await window.storage.set(REMINDERS_KEY, JSON.stringify(reminders), false);
-      if(!result) throw new Error('no result');
+      localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
       setSaveStatus('saved');
     }catch(err){
       console.error('Gagal menyimpan reminders:', err);
@@ -546,37 +572,34 @@
 
   function queueSave(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveReminders, 250);
+    saveTimer = setTimeout(saveReminders, 200);
   }
 
-  async function savePetName(name){
+  function savePetName(name){
     try{
-      await window.storage.set(PETNAME_KEY, name, false);
+      localStorage.setItem(PETNAME_KEY, name);
     }catch(err){
       console.error('Gagal menyimpan nama:', err);
     }
   }
 
-  async function loadAll(){
+  function loadAll(){
     setSaveStatus('loading');
-    // load reminders
     try{
-      const res = await window.storage.get(REMINDERS_KEY, false);
-      if(res && res.value){
-        reminders = JSON.parse(res.value);
+      const raw = localStorage.getItem(REMINDERS_KEY);
+      if(raw){
+        reminders = JSON.parse(raw);
       }
     }catch(err){
-      // key belum ada / belum pernah disimpan, itu normal di pemakaian pertama
       reminders = [];
     }
-    // load pet name
     try{
-      const res2 = await window.storage.get(PETNAME_KEY, false);
-      if(res2 && res2.value){
-        petNameInput.value = res2.value;
+      const savedName = localStorage.getItem(PETNAME_KEY);
+      if(savedName){
+        petNameInput.value = savedName;
       }
     }catch(err){
-      // belum ada nama tersimpan, pakai default
+      // pakai default
     }
     renderReminders();
     setSaveStatus('saved');
@@ -749,6 +772,51 @@
   document.getElementById('rDate').valueAsDate = new Date();
 
   loadAll();
+
+  // ---- PWA setup: ikon kelinci + manifest, dibuat langsung di browser ----
+  // supaya saat di-"Add to Home Screen" muncul ikon kelinci & terbuka tanpa address bar
+  function utf8ToBase64(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  (function setupPWA(){
+    const iconSvg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+        <rect width="192" height="192" rx="36" fill="#FBF4E9"/>
+        <ellipse cx="70" cy="58" rx="14" ry="32" fill="#FFFDF9" stroke="#7A5C46" stroke-width="6" transform="rotate(-18 70 58)"/>
+        <ellipse cx="122" cy="58" rx="14" ry="32" fill="#FFFDF9" stroke="#7A5C46" stroke-width="6" transform="rotate(18 122 58)"/>
+        <ellipse cx="70" cy="62" rx="6" ry="16" fill="#F2B9AE" transform="rotate(-18 70 62)"/>
+        <ellipse cx="122" cy="62" rx="6" ry="16" fill="#F2B9AE" transform="rotate(18 122 62)"/>
+        <circle cx="96" cy="118" r="46" fill="#FFFDF9" stroke="#7A5C46" stroke-width="6"/>
+        <circle cx="80" cy="112" r="4.5" fill="#4E3826"/>
+        <circle cx="112" cy="112" r="4.5" fill="#4E3826"/>
+        <ellipse cx="96" cy="124" rx="5" ry="4" fill="#C99A6B"/>
+      </svg>
+    `.trim();
+
+    const iconUrl = 'data:image/svg+xml;base64,' + utf8ToBase64(iconSvg);
+
+    document.getElementById('appIcon').setAttribute('href', iconUrl);
+    document.getElementById('appleIcon').setAttribute('href', iconUrl);
+
+    const manifest = {
+      name: "Usagi Reminder",
+      short_name: "Usagi",
+      description: "Pengingat lucu bertema kelinci, dengan tombol kirim WhatsApp",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#FBF4E9",
+      theme_color: "#FBF4E9",
+      icons: [
+        { src: iconUrl, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+        { src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+      ]
+    };
+
+    const manifestUrl = 'data:application/json;base64,' + utf8ToBase64(JSON.stringify(manifest));
+    document.getElementById('manifestLink').setAttribute('href', manifestUrl);
+  })();
 
 </script>
 </body>
