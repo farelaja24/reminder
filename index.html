@@ -16,6 +16,10 @@
 <link id="appleIcon" rel="apple-touch-icon" href="">
 <link id="manifestLink" rel="manifest" href="">
 
+<!-- Firebase: dipakai untuk push notification (Firebase Cloud Messaging) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+
 <title>Usagi Reminder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
@@ -448,6 +452,14 @@
 
   <div class="save-status" id="saveStatus"><span class="dot"></span> <span id="saveStatusText">Memuat data...</span></div>
 
+  <div class="card" id="notifCard" style="display:none;">
+    <p class="card-title"><span class="badge">🔔</span> Aktifkan notifikasi</p>
+    <p style="font-size:13px; line-height:1.6; color:var(--cocoa-deep); margin: 0 0 10px;">
+      Supaya pengingatnya benar-benar muncul tepat waktu (walau HP terkunci), izinkan notifikasi dulu ya 🐰
+    </p>
+    <button class="btn btn-primary" id="enableNotifBtn" style="background:var(--blush);">🔔 Izinkan notifikasi</button>
+  </div>
+
   <!-- TAMBAH PENGINGAT -->
   <div class="card">
     <p class="card-title"><span class="badge">📌</span> Buat pengingat baru</p>
@@ -522,6 +534,9 @@
     <p style="font-size:13px; line-height:1.6; color:var(--cocoa-deep); margin: 0;">
       <b>iPhone (Safari):</b> Ketuk ikon <b>Bagikan</b> (kotak dengan tanda panah ke atas) di bagian bawah → gulir lalu pilih <b>"Tambah ke Layar Utama"</b> / "Add to Home Screen" → Tambah.
     </p>
+    <p style="font-size:12px; line-height:1.5; color:var(--cocoa); opacity:0.75; margin: 10px 0 0;">
+      Jangan lupa juga ketuk tombol <b>"🔔 Izinkan notifikasi"</b> di atas, supaya pengingatnya benar-benar bisa muncul walau HP terkunci.
+    </p>
   </div>
 </div>
 
@@ -529,8 +544,17 @@
 
 <script>
   const WA_NUMBER = "6282155347992";
-  const REMINDERS_KEY = "usagi:reminders";
-  const PETNAME_KEY = "usagi:petname";
+  const PETNAME_KEY = "usagi:petname"; // nama panggilan tetap disimpan lokal saja, tidak perlu di backend
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBHHM-qMGtaX59BJ-22RNH4OUuzprt3fgM",
+    authDomain: "usagi-reminder.firebaseapp.com",
+    projectId: "usagi-reminder",
+    storageBucket: "usagi-reminder.firebasestorage.app",
+    messagingSenderId: "1022137762590",
+    appId: "1:1022137762590:web:438e42e00bf52a4939bf0f"
+  };
+  const VAPID_KEY = "BJiHC5QSIjU9aSpq3WdoVGVbVXgHngfBDWuZkPD9McBLt23yehCc6mjnRNgUNEDoyJNC89dYLsUBXl3cAT7o-DY";
 
   const reminderListEl = document.getElementById('reminderList');
   const emptyState = document.getElementById('emptyState');
@@ -538,10 +562,11 @@
   const saveStatusEl = document.getElementById('saveStatus');
   const saveStatusText = document.getElementById('saveStatusText');
   const petNameInput = document.getElementById('petName');
+  const notifCard = document.getElementById('notifCard');
+  const enableNotifBtn = document.getElementById('enableNotifBtn');
 
   let reminders = [];
   let selectedCategory = { icon: '✨', label: 'Umum' };
-  let saveTimer = null;
 
   function setSaveStatus(state){
     if(state === 'saving'){
@@ -549,30 +574,65 @@
       saveStatusText.textContent = 'Menyimpan...';
     } else if(state === 'saved'){
       saveStatusEl.classList.remove('saving');
-      saveStatusText.textContent = 'Tersimpan di perangkat ini';
+      saveStatusText.textContent = 'Tersimpan & siap kirim notifikasi';
     } else if(state === 'error'){
       saveStatusEl.classList.remove('saving');
-      saveStatusText.textContent = 'Gagal menyimpan, coba lagi';
+      saveStatusText.textContent = 'Gagal terhubung ke server, coba lagi';
     } else if(state === 'loading'){
       saveStatusEl.classList.add('saving');
       saveStatusText.textContent = 'Memuat data...';
     }
   }
 
-  function saveReminders(){
-    setSaveStatus('saving');
-    try{
-      localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
-      setSaveStatus('saved');
-    }catch(err){
-      console.error('Gagal menyimpan reminders:', err);
-      setSaveStatus('error');
-    }
+  // ---- API helpers ----
+  async function apiAddReminder(reminder){
+    const res = await fetch('/api/save-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'add-reminder',
+        title: reminder.title,
+        date: reminder.date,
+        time: reminder.time,
+        icon: reminder.icon,
+        label: reminder.label
+      })
+    });
+    if(!res.ok) throw new Error('Gagal menambah pengingat');
+    return res.json();
   }
 
-  function queueSave(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveReminders, 200);
+  async function apiToggleDone(id, done){
+    const res = await fetch('/api/save-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'toggle-done', id, done })
+    });
+    if(!res.ok) throw new Error('Gagal mengubah status');
+    return res.json();
+  }
+
+  async function apiDeleteReminder(id){
+    const res = await fetch(`/api/save-reminder?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if(!res.ok) throw new Error('Gagal menghapus pengingat');
+    return res.json();
+  }
+
+  async function apiGetReminders(){
+    const res = await fetch('/api/save-reminder');
+    if(!res.ok) throw new Error('Gagal memuat pengingat');
+    const data = await res.json();
+    return data.reminders || [];
+  }
+
+  async function apiRegisterToken(token){
+    const res = await fetch('/api/save-reminder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'register-token', token })
+    });
+    if(!res.ok) throw new Error('Gagal mendaftarkan token notifikasi');
+    return res.json();
   }
 
   function savePetName(name){
@@ -583,14 +643,13 @@
     }
   }
 
-  function loadAll(){
+  async function loadAll(){
     setSaveStatus('loading');
     try{
-      const raw = localStorage.getItem(REMINDERS_KEY);
-      if(raw){
-        reminders = JSON.parse(raw);
-      }
+      reminders = await apiGetReminders();
     }catch(err){
+      console.error('Gagal memuat pengingat dari server:', err);
+      setSaveStatus('error');
       reminders = [];
     }
     try{
@@ -602,7 +661,9 @@
       // pakai default
     }
     renderReminders();
-    setSaveStatus('saved');
+    if(saveStatusText.textContent !== 'Gagal terhubung ke server, coba lagi'){
+      setSaveStatus('saved');
+    }
   }
 
   // ---- category chip selection ----
@@ -642,10 +703,16 @@
     }
     emptyState.style.display = 'none';
 
-    // sort: belum selesai dulu, lalu berdasar waktu input
+    // sort: belum selesai dulu, lalu berdasar urutan dibuat
+    const getTime = (r) => {
+      if(!r.createdAt) return 0;
+      if(typeof r.createdAt === 'number') return r.createdAt;
+      if(r.createdAt._seconds) return r.createdAt._seconds;
+      return 0;
+    };
     const sorted = [...reminders].sort((a,b) => {
       if(a.done !== b.done) return a.done ? 1 : -1;
-      return a.createdAt - b.createdAt;
+      return getTime(a) - getTime(b);
     });
 
     sorted.forEach(r => {
@@ -673,7 +740,7 @@
     return div.innerHTML;
   }
 
-  document.getElementById('addReminderBtn').addEventListener('click', () => {
+  document.getElementById('addReminderBtn').addEventListener('click', async () => {
     const title = document.getElementById('rTitle').value.trim();
     const date = document.getElementById('rDate').value;
     const time = document.getElementById('rTime').value;
@@ -683,30 +750,36 @@
       return;
     }
 
-    const reminder = {
-      id: Date.now().toString(),
+    const tempReminder = {
       title,
       date,
       time,
       icon: selectedCategory.icon,
       label: selectedCategory.label,
-      done: false,
-      createdAt: Date.now()
+      done: false
     };
-    reminders.push(reminder);
-    renderReminders();
-    queueSave();
 
-    document.getElementById('rTitle').value = '';
-    document.getElementById('rDate').value = '';
-    document.getElementById('rTime').value = '';
-    document.getElementById('rDate').valueAsDate = new Date();
+    try{
+      const result = await apiAddReminder(tempReminder);
+      tempReminder.id = result.id;
+      tempReminder.createdAt = Date.now() / 1000;
+      reminders.push(tempReminder);
+      renderReminders();
+      setSaveStatus('saved');
 
-    showToast('Pengingat ditambahkan ✓');
-    maybeScheduleNotification(reminder);
+      document.getElementById('rTitle').value = '';
+      document.getElementById('rDate').value = '';
+      document.getElementById('rTime').value = '';
+      document.getElementById('rDate').valueAsDate = new Date();
+
+      showToast('Pengingat ditambahkan ✓');
+    }catch(err){
+      console.error(err);
+      showToast('Gagal menyimpan, coba lagi ya 🐰');
+    }
   });
 
-  reminderListEl.addEventListener('click', (e) => {
+  reminderListEl.addEventListener('click', async (e) => {
     const btn = e.target.closest('.icon-btn');
     if(!btn) return;
     const id = btn.dataset.id;
@@ -714,13 +787,20 @@
     const idx = reminders.findIndex(r => r.id === id);
     if(idx === -1) return;
 
-    if(action === 'done'){
-      reminders[idx].done = !reminders[idx].done;
-    } else if(action === 'delete'){
-      reminders.splice(idx, 1);
+    try{
+      if(action === 'done'){
+        const newDone = !reminders[idx].done;
+        await apiToggleDone(id, newDone);
+        reminders[idx].done = newDone;
+      } else if(action === 'delete'){
+        await apiDeleteReminder(id);
+        reminders.splice(idx, 1);
+      }
+      renderReminders();
+    }catch(err){
+      console.error(err);
+      showToast('Gagal memperbarui, coba lagi ya 🐰');
     }
-    renderReminders();
-    queueSave();
   });
 
   petNameInput.addEventListener('change', () => {
@@ -729,27 +809,60 @@
     savePetName(name);
   });
 
-  // ---- Browser notification (best-effort, in-session only) ----
-  function maybeScheduleNotification(reminder){
-    if(!('Notification' in window)) return;
-    if(!reminder.date || !reminder.time) return;
+  // ---- Push Notification (Firebase Cloud Messaging) ----
+  // Berbeda dari setTimeout biasa, ini akan tetap diterima walau
+  // halaman ditutup atau HP terkunci, karena dikirim dari server (Cron)
+  // lewat service worker.
+  let fcmReady = false;
 
-    const target = new Date(reminder.date + 'T' + reminder.time);
-    const delay = target.getTime() - Date.now();
-    if(delay <= 0 || delay > 1000 * 60 * 60 * 24) return; // hanya jadwalkan dalam 24 jam & sesi ini masih terbuka
+  function initFirebaseMessaging(){
+    try{
+      firebase.initializeApp(firebaseConfig);
+      fcmReady = true;
+    }catch(err){
+      console.error('Gagal inisialisasi Firebase:', err);
+    }
+  }
 
-    if(Notification.permission === 'granted'){
-      setTimeout(() => {
-        new Notification('🐰 ' + reminder.title, { body: 'Waktunya: ' + reminder.label });
-      }, delay);
-    } else if(Notification.permission !== 'denied'){
-      Notification.requestPermission().then(p => {
-        if(p === 'granted'){
-          setTimeout(() => {
-            new Notification('🐰 ' + reminder.title, { body: 'Waktunya: ' + reminder.label });
-          }, delay);
-        }
-      });
+  async function registerForNotifications(){
+    if(!fcmReady){
+      showToast('Notifikasi belum siap, coba lagi sebentar 🐰');
+      return;
+    }
+    if(!('serviceWorker' in navigator) || !('Notification' in window)){
+      showToast('Browser ini tidak mendukung notifikasi push 😔');
+      return;
+    }
+
+    try{
+      const permission = await Notification.requestPermission();
+      if(permission !== 'granted'){
+        showToast('Notifikasi tidak diizinkan 😔');
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const messaging = firebase.messaging();
+      const token = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+
+      if(token){
+        await apiRegisterToken(token);
+        notifCard.style.display = 'none';
+        showToast('Notifikasi aktif! 🔔🐰');
+      }
+    }catch(err){
+      console.error('Gagal mengaktifkan notifikasi:', err);
+      showToast('Gagal mengaktifkan notifikasi, coba lagi ya');
+    }
+  }
+
+  enableNotifBtn.addEventListener('click', registerForNotifications);
+
+  function checkNotificationCardVisibility(){
+    if('Notification' in window && Notification.permission !== 'granted'){
+      notifCard.style.display = 'block';
+    } else {
+      notifCard.style.display = 'none';
     }
   }
 
@@ -771,6 +884,8 @@
   // set default date ke hari ini biar gampang
   document.getElementById('rDate').valueAsDate = new Date();
 
+  initFirebaseMessaging();
+  checkNotificationCardVisibility();
   loadAll();
 
   // ---- PWA setup: ikon kelinci + manifest, dibuat langsung di browser ----
