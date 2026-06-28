@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usagi Reminder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --cream: #FBF4E9;
+    --cream-deep: #F3E6D2;
+    --milk: #FFFDF9;
+    --cocoa: #7A5C46;
+    --cocoa-deep: #4E3826;
+    --caramel: #C99A6B;
+    --blush: #F2B9AE;
+    --mint: #AFCBB8;
+    --line: #E7D6BD;
+    --shadow: rgba(122, 92, 70, 0.18);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    font-family: 'Nunito', sans-serif;
+    color: var(--cocoa-deep);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body{
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(242,185,174,0.35) 0%, transparent 38%),
+      radial-gradient(circle at 88% 8%, rgba(175,203,184,0.30) 0%, transparent 35%),
+      radial-gradient(circle at 90% 85%, rgba(201,154,107,0.20) 0%, transparent 40%);
+  }
+
+  .app{
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 20px 60px;
+    position: relative;
+  }
+
+  /* ---------- HEADER ---------- */
+  .header{
+    text-align: center;
+    margin-bottom: 22px;
+    position: relative;
+  }
+
+  .ears{
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: -18px;
+    position: relative;
+    z-index: 0;
+  }
+  .ear{
+    width: 26px;
+    height: 56px;
+    background: var(--milk);
+    border: 3px solid var(--cocoa);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    transform: rotate(var(--tilt));
+  }
+  .ear.left{ --tilt: -14deg; }
+  .ear.right{ --tilt: 14deg; }
+  .ear::after{
+    content:'';
+    position: absolute;
+    inset: 8px 9px 14px 9px;
+    background: var(--blush);
+    border-radius: 50%;
+  }
+
+  .face-wrap{
+    position: relative;
+    z-index: 1;
+    width: 92px;
+    height: 92px;
+    margin: 0 auto;
+    background: var(--milk);
+    border: 3px solid var(--cocoa);
+    border-radius: 50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow: 0 6px 0 var(--shadow);
+  }
+  .face{
+    font-size: 30px;
+  }
+
+  h1{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    margin: 14px 0 2px;
+    color: var(--cocoa-deep);
+  }
+
+  .subtitle{
+    font-size: 13.5px;
+    color: var(--cocoa);
+    opacity: 0.8;
+    margin: 0;
+  }
+
+  .name-tag{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    background: var(--milk);
+    border: 2px dashed var(--caramel);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cocoa-deep);
+  }
+  .name-tag input{
+    border: none;
+    background: transparent;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+    color: var(--cocoa-deep);
+    width: 90px;
+    text-align: center;
+    outline: none;
+  }
+
+  /* ---------- SECTION CARD ---------- */
+  .card{
+    background: var(--milk);
+    border: 2.5px solid var(--cocoa);
+    border-radius: 22px;
+    padding: 18px 18px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 6px 0 var(--shadow);
+    position: relative;
+  }
+
+  .card-title{
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--cocoa-deep);
+  }
+
+  .badge{
+    font-size: 18px;
+  }
+
+  /* ---------- FORM ---------- */
+  label{
+    display:block;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cocoa);
+    margin: 10px 0 5px;
+  }
+
+  input[type="text"], input[type="time"], input[type="date"], select, textarea{
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--line);
+    border-radius: 14px;
+    background: var(--cream);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    color: var(--cocoa-deep);
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  input:focus, select:focus, textarea:focus{
+    border-color: var(--caramel);
+  }
+
+  .row{
+    display: flex;
+    gap: 10px;
+  }
+  .row > div{ flex: 1; }
+
+  .chip-group{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .chip{
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 2px solid var(--line);
+    background: var(--cream);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--cocoa);
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s ease;
+  }
+  .chip.active{
+    background: var(--blush);
+    border-color: var(--cocoa);
+    color: var(--cocoa-deep);
+  }
+
+  .btn{
+    appearance: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    border-radius: 16px;
+    font-size: 14.5px;
+    padding: 12px 16px;
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  .btn:active{ transform: translateY(2px); }
+
+  .btn-primary{
+    width: 100%;
+    margin-top: 14px;
+    background: var(--mint);
+    color: var(--cocoa-deep);
+    border: 2.5px solid var(--cocoa);
+    box-shadow: 0 4px 0 var(--shadow);
+  }
+  .btn-primary:active{ box-shadow: 0 1px 0 var(--shadow); }
+
+  /* ---------- REMINDER LIST ---------- */
+  .empty-state{
+    text-align: center;
+    padding: 24px 10px;
+    color: var(--cocoa);
+    opacity: 0.7;
+    font-size: 13.5px;
+  }
+  .empty-state .big-emoji{
+    font-size: 34px;
+    display:block;
+    margin-bottom: 6px;
+  }
+
+  .reminder-item{
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--cream);
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    padding: 12px 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .reminder-item.done{
+    opacity: 0.55;
+  }
+  .reminder-item.done .r-title{
+    text-decoration: line-through;
+  }
+
+  .r-icon{
+    font-size: 22px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .r-body{ flex: 1; min-width: 0; }
+  .r-title{
+    font-weight: 800;
+    font-size: 14.5px;
+    color: var(--cocoa-deep);
+    margin: 0 0 2px;
+    word-break: break-word;
+  }
+  .r-meta{
+    font-size: 12px;
+    color: var(--cocoa);
+    opacity: 0.85;
+  }
+  .r-tag{
+    display:inline-block;
+    margin-top: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--cream-deep);
+    color: var(--cocoa);
+  }
+  .r-actions{
+    display:flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .icon-btn{
+    background: var(--milk);
+    border: 2px solid var(--line);
+    border-radius: 10px;
+    width: 30px;
+    height: 30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .icon-btn:hover{ background: var(--cream-deep); }
+
+  /* ---------- WHATSAPP CARD ---------- */
+  .wa-card{
+    background: linear-gradient(135deg, var(--mint) 0%, #C8DFCF 100%);
+  }
+  textarea{
+    resize: none;
+    min-height: 70px;
+  }
+  .wa-btn{
+    width: 100%;
+    margin-top: 12px;
+    background: #4FB877;
+    color: white;
+    border: 2.5px solid var(--cocoa-deep);
+    box-shadow: 0 4px 0 var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .wa-quick{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 10px;
+  }
+  .wa-quick button{
+    background: var(--milk);
+    border: 2px solid var(--cocoa);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cocoa-deep);
+    cursor: pointer;
+  }
+  .wa-quick button:hover{ background: var(--blush); }
+
+  .footer-note{
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--cocoa);
+    opacity: 0.6;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .save-status{
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--cocoa);
+    opacity: 0.55;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .save-status .dot{
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--mint);
+  }
+  .save-status.saving .dot{
+    background: var(--caramel);
+  }
+
+  .toast{
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--cocoa-deep);
+    color: var(--milk);
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: all .25s ease;
+    pointer-events: none;
+    z-index: 50;
+    white-space: nowrap;
+  }
+  .toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="ears">
+      <div class="ear left"></div>
+      <div class="ear right"></div>
+    </div>
+    <div class="face-wrap"><div class="face">🐰</div></div>
+    <h1>Usagi Reminder</h1>
+    <p class="subtitle">Pengingat kecil dari aku, untuk hari-harimu</p>
+    <div class="name-tag">
+      untuk <input type="text" id="petName" value="Sayang" />
+    </div>
+  </div>
+
+  <div class="save-status" id="saveStatus"><span class="dot"></span> <span id="saveStatusText">Memuat data...</span></div>
+
+  <!-- TAMBAH PENGINGAT -->
+  <div class="card">
+    <p class="card-title"><span class="badge">📌</span> Buat pengingat baru</p>
+
+    <label for="rTitle">Mau diingatkan tentang apa?</label>
+    <input type="text" id="rTitle" placeholder="Contoh: minum vitamin, kelas jam 1, skincare malam...">
+
+    <div class="row">
+      <div>
+        <label for="rDate">Tanggal</label>
+        <input type="date" id="rDate">
+      </div>
+      <div>
+        <label for="rTime">Jam</label>
+        <input type="time" id="rTime">
+      </div>
+    </div>
+
+    <label>Kategori</label>
+    <div class="chip-group" id="categoryChips">
+      <div class="chip active" data-icon="✨" data-label="Umum">✨ Umum</div>
+      <div class="chip" data-icon="💊" data-label="Kesehatan">💊 Kesehatan</div>
+      <div class="chip" data-icon="📚" data-label="Belajar/Kerja">📚 Belajar/Kerja</div>
+      <div class="chip" data-icon="🍚" data-label="Makan">🍚 Makan</div>
+      <div class="chip" data-icon="💤" data-label="Istirahat">💤 Istirahat</div>
+      <div class="chip" data-icon="🚿" data-label="Self-care">🚿 Self-care</div>
+    </div>
+
+    <button class="btn btn-primary" id="addReminderBtn">+ Tambahkan pengingat</button>
+  </div>
+
+  <!-- DAFTAR PENGINGAT -->
+  <div class="card">
+    <p class="card-title"><span class="badge">🥕</span> Daftar pengingat</p>
+    <div id="reminderList">
+      <div class="empty-state" id="emptyState">
+        <span class="big-emoji">🐇💭</span>
+        Belum ada pengingat. Yuk tambahkan satu di atas!
+      </div>
+    </div>
+  </div>
+
+  <!-- KIRIM WHATSAPP -->
+  <div class="card wa-card">
+    <p class="card-title"><span class="badge">💌</span> Kirim pesan ke aku</p>
+    <label for="waMessage">Tulis pesannya di sini</label>
+    <textarea id="waMessage" placeholder="Halo sayang, aku mau cerita..."></textarea>
+
+    <div class="wa-quick">
+      <button data-msg="Halo sayang, aku kangen 🐰💕">Kangen</button>
+      <button data-msg="Udah makan belum hari ini?">Tanya makan</button>
+      <button data-msg="Tolong jemput aku ya nanti 🥺">Minta jemput</button>
+      <button data-msg="Aku lagi sedih, temenin chat dong">Lagi sedih</button>
+    </div>
+
+    <button class="btn wa-btn" id="sendWaBtn">📲 Buka WhatsApp & kirim</button>
+  </div>
+
+  <p class="footer-note">
+    Tombol WhatsApp akan membuka chat ke nomormu dengan pesan yang sudah terisi —<br>
+    tinggal sekali ketuk kirim 🐾
+  </p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const WA_NUMBER = "6282155347992";
+  const REMINDERS_KEY = "usagi:reminders";
+  const PETNAME_KEY = "usagi:petname";
+
+  const reminderListEl = document.getElementById('reminderList');
+  const emptyState = document.getElementById('emptyState');
+  const toastEl = document.getElementById('toast');
+  const saveStatusEl = document.getElementById('saveStatus');
+  const saveStatusText = document.getElementById('saveStatusText');
+  const petNameInput = document.getElementById('petName');
+
+  let reminders = [];
+  let selectedCategory = { icon: '✨', label: 'Umum' };
+  let saveTimer = null;
+
+  function setSaveStatus(state){
+    if(state === 'saving'){
+      saveStatusEl.classList.add('saving');
+      saveStatusText.textContent = 'Menyimpan...';
+    } else if(state === 'saved'){
+      saveStatusEl.classList.remove('saving');
+      saveStatusText.textContent = 'Tersimpan otomatis';
+    } else if(state === 'error'){
+      saveStatusEl.classList.remove('saving');
+      saveStatusText.textContent = 'Gagal menyimpan, coba lagi';
+    } else if(state === 'loading'){
+      saveStatusEl.classList.add('saving');
+      saveStatusText.textContent = 'Memuat data...';
+    }
+  }
+
+  async function saveReminders(){
+    setSaveStatus('saving');
+    try{
+      const result = await window.storage.set(REMINDERS_KEY, JSON.stringify(reminders), false);
+      if(!result) throw new Error('no result');
+      setSaveStatus('saved');
+    }catch(err){
+      console.error('Gagal menyimpan reminders:', err);
+      setSaveStatus('error');
+    }
+  }
+
+  function queueSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveReminders, 250);
+  }
+
+  async function savePetName(name){
+    try{
+      await window.storage.set(PETNAME_KEY, name, false);
+    }catch(err){
+      console.error('Gagal menyimpan nama:', err);
+    }
+  }
+
+  async function loadAll(){
+    setSaveStatus('loading');
+    // load reminders
+    try{
+      const res = await window.storage.get(REMINDERS_KEY, false);
+      if(res && res.value){
+        reminders = JSON.parse(res.value);
+      }
+    }catch(err){
+      // key belum ada / belum pernah disimpan, itu normal di pemakaian pertama
+      reminders = [];
+    }
+    // load pet name
+    try{
+      const res2 = await window.storage.get(PETNAME_KEY, false);
+      if(res2 && res2.value){
+        petNameInput.value = res2.value;
+      }
+    }catch(err){
+      // belum ada nama tersimpan, pakai default
+    }
+    renderReminders();
+    setSaveStatus('saved');
+  }
+
+  // ---- category chip selection ----
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      selectedCategory = { icon: chip.dataset.icon, label: chip.dataset.label };
+    });
+  });
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  function formatDateTime(dateStr, timeStr){
+    if(!dateStr && !timeStr) return 'Tanpa waktu khusus';
+    let out = '';
+    if(dateStr){
+      const d = new Date(dateStr + 'T00:00:00');
+      out += d.toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+    }
+    if(timeStr){
+      out += (out ? ' · ' : '') + timeStr;
+    }
+    return out;
+  }
+
+  function renderReminders(){
+    reminderListEl.querySelectorAll('.reminder-item').forEach(el => el.remove());
+
+    if(reminders.length === 0){
+      emptyState.style.display = 'block';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    // sort: belum selesai dulu, lalu berdasar waktu input
+    const sorted = [...reminders].sort((a,b) => {
+      if(a.done !== b.done) return a.done ? 1 : -1;
+      return a.createdAt - b.createdAt;
+    });
+
+    sorted.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'reminder-item' + (r.done ? ' done' : '');
+      item.innerHTML = `
+        <div class="r-icon">${r.icon}</div>
+        <div class="r-body">
+          <p class="r-title">${escapeHtml(r.title)}</p>
+          <div class="r-meta">🕐 ${formatDateTime(r.date, r.time)}</div>
+          <span class="r-tag">${r.icon} ${r.label}</span>
+        </div>
+        <div class="r-actions">
+          <div class="icon-btn" data-action="done" data-id="${r.id}" title="Tandai selesai">${r.done ? '↺' : '✓'}</div>
+          <div class="icon-btn" data-action="delete" data-id="${r.id}" title="Hapus">✕</div>
+        </div>
+      `;
+      reminderListEl.appendChild(item);
+    });
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('addReminderBtn').addEventListener('click', () => {
+    const title = document.getElementById('rTitle').value.trim();
+    const date = document.getElementById('rDate').value;
+    const time = document.getElementById('rTime').value;
+
+    if(!title){
+      showToast('Isi dulu pengingatnya ya 🐰');
+      return;
+    }
+
+    const reminder = {
+      id: Date.now().toString(),
+      title,
+      date,
+      time,
+      icon: selectedCategory.icon,
+      label: selectedCategory.label,
+      done: false,
+      createdAt: Date.now()
+    };
+    reminders.push(reminder);
+    renderReminders();
+    queueSave();
+
+    document.getElementById('rTitle').value = '';
+    document.getElementById('rDate').value = '';
+    document.getElementById('rTime').value = '';
+    document.getElementById('rDate').valueAsDate = new Date();
+
+    showToast('Pengingat ditambahkan ✓');
+    maybeScheduleNotification(reminder);
+  });
+
+  reminderListEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-btn');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    const idx = reminders.findIndex(r => r.id === id);
+    if(idx === -1) return;
+
+    if(action === 'done'){
+      reminders[idx].done = !reminders[idx].done;
+    } else if(action === 'delete'){
+      reminders.splice(idx, 1);
+    }
+    renderReminders();
+    queueSave();
+  });
+
+  petNameInput.addEventListener('change', () => {
+    const name = petNameInput.value.trim() || 'Sayang';
+    petNameInput.value = name;
+    savePetName(name);
+  });
+
+  // ---- Browser notification (best-effort, in-session only) ----
+  function maybeScheduleNotification(reminder){
+    if(!('Notification' in window)) return;
+    if(!reminder.date || !reminder.time) return;
+
+    const target = new Date(reminder.date + 'T' + reminder.time);
+    const delay = target.getTime() - Date.now();
+    if(delay <= 0 || delay > 1000 * 60 * 60 * 24) return; // hanya jadwalkan dalam 24 jam & sesi ini masih terbuka
+
+    if(Notification.permission === 'granted'){
+      setTimeout(() => {
+        new Notification('🐰 ' + reminder.title, { body: 'Waktunya: ' + reminder.label });
+      }, delay);
+    } else if(Notification.permission !== 'denied'){
+      Notification.requestPermission().then(p => {
+        if(p === 'granted'){
+          setTimeout(() => {
+            new Notification('🐰 ' + reminder.title, { body: 'Waktunya: ' + reminder.label });
+          }, delay);
+        }
+      });
+    }
+  }
+
+  // ---- WhatsApp ----
+  document.querySelectorAll('.wa-quick button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('waMessage').value = btn.dataset.msg;
+    });
+  });
+
+  document.getElementById('sendWaBtn').addEventListener('click', () => {
+    const msg = document.getElementById('waMessage').value.trim();
+    const name = petNameInput.value.trim() || 'Sayang';
+    const finalMsg = msg || `Halo, ini ${name} 🐰`;
+    const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(finalMsg)}`;
+    window.open(url, '_blank');
+  });
+
+  // set default date ke hari ini biar gampang
+  document.getElementById('rDate').valueAsDate = new Date();
+
+  loadAll();
+
+</script>
+</body>
+</html>
